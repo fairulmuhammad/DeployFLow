@@ -1,0 +1,39 @@
+# Laravel
+/vendor
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/bootstrap/cache/*.php
+.phpunit.result.cache
+.phpunit.cache
+/coverage
+
+# Environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!resources/**/*.key
+
+# IDE / OS
+.idea
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+*.swp
+
+# Logs / local state
+*.log
+/tmp
+/.docker-data
+/infrastructure/compose/.env
+
+# Build artifacts
+*.tar
+*.tar.gz
+*.zip
