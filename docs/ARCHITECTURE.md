@@ -25,7 +25,7 @@ flowchart LR
   RP --> APP[Laravel control plane]
   APP --> PG[(PostgreSQL)]
   APP --> RD[(Redis)]
-  APP --> S3[(S3 / MinIO)]
+  APP --> S3[(S3 / S3Mock)]
   APP --> REG[(Registry)]
 
   subgraph EXEC[Execution boundary]
@@ -247,7 +247,7 @@ Single Docker host:
 host
 ├── traefik            public :80/:443, file provider (dynamic config per environment)
 ├── control-plane      app + queue + horizon (no docker socket)
-├── postgres, redis, minio, registry
+├── postgres, redis, s3, registry
 ├── build-worker       rootless BuildKit, egress-limited
 └── deployment-agent   docker access restricted to deployflow-* resources
 ```

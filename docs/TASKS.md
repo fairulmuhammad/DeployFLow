@@ -60,7 +60,7 @@ flowchart LR
 | ID | M | Title | Depends | Size | Exit |
 |---|---|---|---|---|---|
 | DF-001 | M0 | Initialize Laravel 13 project | — | S | app boots, `/up` returns 200 |
-| DF-002 | M0 | PostgreSQL, Redis, MinIO, registry in compose | DF-001 | S | migrations run, connections verified |
+| DF-002 | M0 | PostgreSQL, Redis, S3, registry in compose | DF-001 | S | migrations run, connections verified |
 | DF-003 | M0 | Architecture docs + ADRs | DF-001 | S | docs reviewed, ADRs 001–022 present |
 | DF-004 | M0 | CI pipeline | DF-001, DF-002 | S | PR shows green `ci.yml` |
 | DF-005 | M1 | Authentication | DF-004 | M | auth feature tests (PRD §4) |
@@ -109,7 +109,7 @@ flowchart LR
 - Exit: `make setup && make check` green on a clean clone.
 
 **DF-002 — Infrastructure compose**
-- `docker-compose.yml` services: `postgres:17`, `redis:7`, `minio`, `registry:2`, `traefik:3`.
+- `docker-compose.yml` services: `postgres:17`, `redis:7`, `s3mock`, `registry:2`, `traefik:3`.
 - App + queue + horizon profiles; no Docker socket in any app service.
 - DB roles: app, migrate, readonly. Volumes + healthchecks.
 - Exit: `docker compose config` valid; migrations run; `make dev` boots all dependencies.

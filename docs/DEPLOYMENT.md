@@ -130,7 +130,7 @@ services:
   scheduler:      # schedule:work
   postgres:       # volume, healthcheck, app/migrate/readonly roles
   redis:          # password, no published port
-  minio:          # logs bucket (dev; use managed S3 in prod)
+  s3:            # logs bucket, S3Mock locally (managed S3 in prod)
   registry:       # registry:2 (dev; GHCR in prod)
   build-worker:   # rootless BuildKit, egress-limited
   deploy-agent:   # docker access limited to deployflow-* labels

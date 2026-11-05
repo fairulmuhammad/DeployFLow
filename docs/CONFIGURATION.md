@@ -108,7 +108,7 @@ chosen registry driver pushes to GHCR with installation tokens (verify in DF-009
 | `AWS_SECRET_ACCESS_KEY` | — | S | ✓ | |
 | `AWS_DEFAULT_REGION` | `us-east-1` | | | |
 | `AWS_BUCKET` | `deployflow-logs` | | ✓ | private |
-| `AWS_ENDPOINT` | — | | | MinIO in local |
+| `AWS_ENDPOINT` | — | | | S3-compatible local store (S3Mock) |
 | `AWS_USE_PATH_STYLE_ENDPOINT` | `true` (local) | | | |
 | `LOG_SIGNED_URL_TTL` | `300` | | | seconds |
 | `LOG_CHUNK_MAX_BYTES` | `65536` | | | worker upload cap |
@@ -194,7 +194,7 @@ DB_HOST=postgres
 REDIS_HOST=redis
 REGISTRY_DRIVER=local
 REGISTRY_HOST=registry.local:5000
-AWS_ENDPOINT=http://minio:9000
+AWS_ENDPOINT=http://127.0.0.1:9000
 AWS_USE_PATH_STYLE_ENDPOINT=true
 MAIL_MAILER=log
 QUEUE_CONNECTION=redis

@@ -2,8 +2,13 @@ name: deployflow
 
 # Local reference stack for M0 (docs/agents/M0.md, DF-002).
 # Only the deployment agent (M5) may ever receive a Docker socket; nothing here
-# mounts one. Postgres/Redis/MinIO/registry have no public ports except the
-# registry's dev-only binding on 127.0.0.1.
+# mounts one. Postgres/Redis/object storage/registry have no public ports
+# except the registry's dev-only binding on 127.0.0.1 and the S3 console port.
+#
+# Object storage is adobe/s3mock: MinIO (minio/minio, quay.io/minio/*) is no
+# longer pullable from Docker Hub, so the local S3-compatible endpoint is
+# S3Mock. It speaks the S3 API on :9090, serves /favicon.ico as readiness,
+# and pre-creates buckets via STORE_INITIAL_BUCKETS.
 
 x-app-environment: &app-environment
   APP_ENV: ${APP_ENV:-local}
@@ -31,7 +36,7 @@ x-app-environment: &app-environment
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-deployflow}
   AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
   AWS_BUCKET: ${AWS_BUCKET:-deployflow-logs}
-  AWS_ENDPOINT: http://minio:9000
+  AWS_ENDPOINT: http://s3:9090
   AWS_USE_PATH_STYLE_ENDPOINT: "true"
   REGISTRY_DRIVER: local
   REGISTRY_HOST: registry:5000
@@ -54,9 +59,9 @@ x-app-service: &app-service
       condition: service_healthy
     redis:
       condition: service_healthy
-    minio:
+    s3:
       condition: service_healthy
-    minio-init:
+    s3-init:
       condition: service_completed_successfully
   networks:
     - deployflow
@@ -137,19 +142,22 @@ services:
     networks:
       - deployflow
 
-  minio:
-    image: minio/minio:latest
+  s3:
+    image: adobe/s3mock:latest
     restart: unless-stopped
-    command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-deployflow}
-      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-deployflow}
+      # S3Mock pre-creates buckets on startup; no separate init container needed.
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: ${AWS_BUCKET:-deployflow-logs}
+      COM_ADOBE_TESTING_S3MOCK_STORE_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      # Keep logs across restarts for the local stack.
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /s3mockroot
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: "true"
     volumes:
-      - minio-data:/data
+      - s3-data:/s3mockroot
     ports:
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "${S3_PORT:-9000}:9090"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/favicon.ico"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -158,23 +166,18 @@ services:
     networks:
       - deployflow
 
-  minio-init:
-    image: minio/mc:latest
+  # Kept for backwards compatibility with `make infra` invocations; the bucket
+  # is pre-created by s3, so this is a no-op verify step.
+  s3-init:
+    image: alpine:3.20
     restart: "no"
     depends_on:
-      minio:
+      s3:
         condition: service_healthy
-    environment:
-      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-deployflow}
-      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-deployflow}
-      AWS_BUCKET: ${AWS_BUCKET:-deployflow-logs}
-    entrypoint:
+    command:
       - sh
       - -c
-      - |
-        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
-        mc mb --ignore-existing "local/$${AWS_BUCKET}"
-        mc anonymous set none "local/$${AWS_BUCKET}"
+      - "echo 's3 bucket ${AWS_BUCKET:-deployflow-logs} pre-created by s3mock'"
     logging: *default-logging
     networks:
       - deployflow
@@ -208,14 +211,34 @@ services:
   queue:
     <<: *app-service
     command: ["php", "artisan", "queue:work", "--tries=3", "--max-time=3600"]
+    # queue:work has no HTTP server, so the app image's :8000 healthcheck can
+    # never pass. Probe the process instead.
+    healthcheck:
+      test: ["CMD-SHELL", "pidof php >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   horizon:
     <<: *app-service
     command: ["php", "artisan", "horizon"]
+    healthcheck:
+      test: ["CMD-SHELL", "pidof php >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   scheduler:
     <<: *app-service
     command: ["php", "artisan", "schedule:work"]
+    healthcheck:
+      test: ["CMD-SHELL", "pidof php >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # One-shot migration runner (`make up` invokes it). Migrations use a
   # separate DDL role in production; the local stack keeps the same shape.
@@ -228,7 +251,7 @@ services:
 volumes:
   postgres-data:
   redis-data:
-  minio-data:
+  s3-data:
   registry-data:
 
 networks:

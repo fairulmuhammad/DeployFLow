@@ -4,7 +4,7 @@ help:
 	@printf "%s\n" \
 		"setup          install PHP/JS dependencies, generate key, build assets, migrate" \
 		"up             build and start the full local stack (docker compose)" \
-		"infra          start dependencies only (postgres, redis, minio, registry, traefik)" \
+		"infra          start dependencies only (postgres, redis, s3, registry, traefik)" \
 		"down           stop the local stack" \
 		"logs           follow stack logs" \
 		"dev            start the stack and print the app URL" \
@@ -32,7 +32,7 @@ up: env
 	docker compose --profile tools run --rm migrate
 
 infra: env
-	docker compose up -d postgres redis minio minio-init registry traefik
+	docker compose up -d postgres redis s3 s3-init registry traefik
 
 down:
 	docker compose down

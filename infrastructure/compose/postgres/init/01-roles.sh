@@ -40,11 +40,14 @@ ALTER ROLE :"app_user" NOSUPERUSER NOCREATEDB NOCREATEROLE;
 ALTER ROLE :"migrate_user" NOSUPERUSER NOCREATEDB NOCREATEROLE;
 ALTER ROLE :"readonly_user" NOSUPERUSER NOCREATEDB NOCREATEROLE;
 
+-- The local stack runs migrations as deployflow_app (see docker-compose.yml),
+-- so it needs schema CREATE. In production, grant CREATE only to the migrate
+-- role (DEPLOYFLOW_MIGRATE_USER) and revoke it from the app role.
 REVOKE ALL ON DATABASE :"db" FROM PUBLIC;
 GRANT CONNECT ON DATABASE :"db" TO :"app_user", :"migrate_user", :"readonly_user";
 
 GRANT USAGE ON SCHEMA public TO :"app_user", :"migrate_user", :"readonly_user";
-GRANT CREATE ON SCHEMA public TO :"migrate_user";
+GRANT CREATE ON SCHEMA public TO :"app_user", :"migrate_user";
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO :"app_user";
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO :"app_user";
