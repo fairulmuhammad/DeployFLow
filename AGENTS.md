@@ -111,16 +111,23 @@ These are the contract. They are created during M0 (DF-001…DF-004); if a comma
 it, not to invent a new one.
 
 ```bash
-make setup          # composer install, npm ci, .env, key:generate, build assets, migrate
-make dev            # app server + queue listener + vite (composer dev)
+make setup          # host workflow: composer install, npm ci, .env, key, build, storage link, migrate
+make up             # container workflow: build + start the full stack, then run migrations
+make infra          # start dependencies only (postgres, redis, minio, registry, traefik)
+make down           # stop the local stack
+make logs           # follow stack logs
+make compose-config # validate docker-compose.yml
+make dev            # make up + print the app URL
+make dev-host       # app server + horizon + vite on the host (needs PHP extensions)
+make migrate        # apply migrations
 make test           # pest
 make lint           # pint --test + tsc --noEmit
 make analyse        # phpstan (level 8)
 make typecheck      # tsc --noEmit
 make check          # lint + analyse + test  (the gate CI runs)
 make fresh          # migrate:fresh --seed (local only)
-make worker-build   # run build worker against local control plane
-make deploy-agent   # run deployment agent against local docker
+make worker-build   # run build worker against local control plane (M4)
+make deploy-agent   # run deployment agent against local docker (M5)
 ```
 
 `make worker-build` and `make deploy-agent` arrive with the workers (M4/M5).
@@ -203,12 +210,16 @@ From blueprint §14, plus local additions:
 
 ## 11. Current state
 
-- M0 in progress. Done: Laravel 13.40 skeleton, Inertia 3 + React 19 + TypeScript 5.9 + Vite 8 + Tailwind 4 frontend
-  base, Pest 4 / Larastan 3 / Pint configured, `/up` health route, `.env.example`, `Makefile`, and the complete `docs/`
-  contract (ADRs 001–022, milestone briefs). Remaining for M0: compose stack (DF-002), CI workflows (DF-004),
-  `/healthz`, and the worker Make targets.
+- M0 nearly complete. Done: Laravel 13.40 skeleton, Inertia 3 + React 19 + TypeScript 5.9 + Vite 8 + Tailwind 4,
+  Pest 4 / Larastan 3 / Pint, Horizon 5, `/up` and `/healthz` (database + Redis, no secrets), `config/deployflow.php`,
+  `.env.example`, the M0 `Makefile`, the compose stack (postgres/redis/minio/registry/traefik + app/queue/horizon/
+  scheduler/migrate), and `.github/workflows/ci.yml` + `security.yml`. Remaining: confirm CI green on the first pushed
+  PR and pin actions by SHA before public release (DF-033).
+- Verification: `make check` green; `docker compose config` valid; `/healthz` returns 503 with
+  `{"status":"degraded","checks":{"database":false,"redis":false}}` on this WSL host because `pdo_pgsql`/`redis` are
+  absent, and 200 inside the compose stack.
 - Local toolchain caveat: this WSL install is PHP 8.3.6 without `pdo_pgsql`, `pdo_sqlite`, or `redis`, and Docker WSL
-  integration is disabled — DB migrations/tests and `docker compose` cannot run until both are fixed. The app itself
-  boots and `make check` passes with the array/sync drivers used by `phpunit.xml`.
+  integration is disabled — host-run DB work needs the extensions, and `docker compose up` needs Docker Desktop with
+  WSL integration enabled. The Windows Docker CLI can still validate the compose file.
 - Do not scaffold ad-hoc; follow `docs/TASKS.md` and `docs/agents/M0.md`.
-- When M0 is complete, update this section and the command table in the same PR.
+- When M1 starts, move this section forward and keep the command table accurate.

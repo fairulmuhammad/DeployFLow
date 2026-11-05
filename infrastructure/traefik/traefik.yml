@@ -1,0 +1,29 @@
+# Traefik static configuration (v1 reference host, ADR-009/ADR-021).
+#
+# The deployment agent (M5) writes one dynamic file per environment under
+# /etc/traefik/dynamic/<environment_id>.yml, then swaps traffic by atomically
+# renaming the file. The dashboard is intentionally disabled.
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+  traefik:
+    address: ":8080"
+
+api:
+  dashboard: false
+
+ping:
+  entryPoint: traefik
+
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+log:
+  level: INFO
+
+accessLog: {}

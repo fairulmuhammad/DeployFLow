@@ -3,8 +3,8 @@
 A self-hosted deployment control plane: connect a GitHub repository, build an immutable container image in an isolated
 worker, deploy it blue-green, verify health, and roll back to a previously verified release.
 
-> **Status:** specification complete, implementation not started (M0). Only `blueprint.md`, `docs/`, and `AGENTS.md`
-> exist today. The quickstart below is the target contract for M0.
+> **Status:** M0 foundation in place — Laravel 13 control plane, Inertia/React frontend, compose stack, health
+> endpoints, and CI workflows. Identity and tenancy (M1) are next. See `docs/ROADMAP.md`.
 
 ---
 
@@ -49,21 +49,24 @@ Traefik 3 · S3-compatible log storage · Pest 4 · Larastan 8 · Trivy.
 
 ---
 
-## Quickstart (available after M0)
+## Quickstart
 
 ```bash
 git clone https://github.com/fairulmuhammad/DeployFlow.git
 cd DeployFlow
 cp .env.example .env
-make setup     # composer install, npm ci, key, migrate, storage link
-make dev       # postgres, redis, minio, registry, traefik, vite, queue, horizon
-make check     # lint + static analysis + tests
+make up        # build images, start postgres/redis/minio/registry/traefik/app/queue/horizon, run migrations
+make check     # lint + static analysis + tests (host: needs PHP 8.3+ with pgsql/redis extensions)
 ```
 
-Open `http://localhost`. First-run: register, verify email (mail is logged locally), create an organization, connect the
-GitHub App, then create an application.
+Open `http://localhost:8000`. First-run: register, verify email (mail is logged locally), create an organization,
+connect the GitHub App, then create an application.
 
-Prerequisites: PHP 8.3+ with `pgsql`/`redis` extensions, Composer 2, Node 22, Docker 27+ with BuildKit, `make`.
+Host-only workflow: `make setup` then `make dev-host`. Container services are defined in `docker-compose.yml`; no
+service mounts the Docker socket.
+
+Prerequisites: Docker 27+ with BuildKit and Compose v2, `make`, and — for `make check` — PHP 8.3+ with `pgsql` and
+`redis` extensions, Composer 2, Node 24.
 
 ---
 

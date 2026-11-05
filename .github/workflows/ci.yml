@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DB_CONNECTION: pgsql
+  DB_HOST: 127.0.0.1
+  DB_PORT: "5432"
+  DB_DATABASE: deployflow
+  DB_USERNAME: deployflow_app
+  DB_PASSWORD: deployflow
+  REDIS_CLIENT: phpredis
+  REDIS_HOST: 127.0.0.1
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: "null"
+
+jobs:
+  php:
+    name: PHP (lint, analyse, test)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: deployflow
+          POSTGRES_USER: deployflow_app
+          POSTGRES_PASSWORD: deployflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U deployflow_app -d deployflow"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo_pgsql, redis, pcntl, posix, intl, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Verify migrations
+        run: php artisan migrate --force
+
+      - name: Lint (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Static analysis (PHPStan level 8)
+        run: vendor/bin/phpstan analyse --memory-limit=1G
+
+      - name: Tests (Pest)
+        run: php artisan test
+
+  frontend:
+    name: Frontend (types, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build assets
+        run: npm run build
+
+  compose:
+    name: Compose configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate docker compose file
+        run: |
+          cp .env.example .env
+          docker compose config -q

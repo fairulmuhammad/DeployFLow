@@ -1,0 +1,236 @@
+name: deployflow
+
+# Local reference stack for M0 (docs/agents/M0.md, DF-002).
+# Only the deployment agent (M5) may ever receive a Docker socket; nothing here
+# mounts one. Postgres/Redis/MinIO/registry have no public ports except the
+# registry's dev-only binding on 127.0.0.1.
+
+x-app-environment: &app-environment
+  APP_ENV: ${APP_ENV:-local}
+  APP_KEY: ${APP_KEY:-}
+  APP_DEBUG: ${APP_DEBUG:-true}
+  APP_URL: ${APP_URL:-http://localhost:8000}
+  APP_TIMEZONE: UTC
+  LOG_CHANNEL: ${LOG_CHANNEL:-stack}
+  LOG_LEVEL: ${LOG_LEVEL:-debug}
+  DB_CONNECTION: pgsql
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_DATABASE: ${POSTGRES_DB:-deployflow}
+  DB_USERNAME: ${DB_USERNAME:-deployflow_app}
+  DB_PASSWORD: ${DB_PASSWORD:-deployflow}
+  REDIS_CLIENT: phpredis
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-deployflow}
+  CACHE_STORE: redis
+  SESSION_DRIVER: redis
+  QUEUE_CONNECTION: redis
+  FILESYSTEM_DISK: s3
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-deployflow}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-deployflow}
+  AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+  AWS_BUCKET: ${AWS_BUCKET:-deployflow-logs}
+  AWS_ENDPOINT: http://minio:9000
+  AWS_USE_PATH_STYLE_ENDPOINT: "true"
+  REGISTRY_DRIVER: local
+  REGISTRY_HOST: registry:5000
+  REGISTRY_ALLOWED_HOSTS: registry:5000
+  TRAEFIK_DYNAMIC_PATH: /traefik/dynamic
+  HORIZON_PREFIX: ${HORIZON_PREFIX:-deployflow_horizon}
+  PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+  FORCE_HTTPS: ${FORCE_HTTPS:-false}
+  METRICS_ENABLED: ${METRICS_ENABLED:-true}
+
+x-app-service: &app-service
+  build:
+    context: .
+    target: app
+  image: deployflow/control-plane:dev
+  restart: unless-stopped
+  environment: *app-environment
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    minio:
+      condition: service_healthy
+    minio-init:
+      condition: service_completed_successfully
+  networks:
+    - deployflow
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+
+  traefik:
+    image: traefik:3
+    restart: unless-stopped
+    command:
+      - --configFile=/etc/traefik/traefik.yml
+    ports:
+      - "${TRAEFIK_HTTP_PORT:-80}:80"
+      - "${TRAEFIK_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./infrastructure/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./infrastructure/traefik/dynamic:/etc/traefik/dynamic:ro
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging: *default-logging
+    networks:
+      - deployflow
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-deployflow}
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-deployflow_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-deployflow}
+      DEPLOYFLOW_APP_USER: ${DB_USERNAME:-deployflow_app}
+      DEPLOYFLOW_APP_PASSWORD: ${DB_PASSWORD:-deployflow}
+      DEPLOYFLOW_MIGRATE_USER: ${DB_MIGRATE_USERNAME:-deployflow_migrate}
+      DEPLOYFLOW_MIGRATE_PASSWORD: ${DB_MIGRATE_PASSWORD:-deployflow}
+      DEPLOYFLOW_READONLY_USER: ${DB_READONLY_USERNAME:-deployflow_readonly}
+      DEPLOYFLOW_READONLY_PASSWORD: ${DB_READONLY_PASSWORD:-deployflow}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/compose/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    logging: *default-logging
+    networks:
+      - deployflow
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - exec redis-server --requirepass "$${REDIS_PASSWORD}" --appendonly yes
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-deployflow}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging: *default-logging
+    networks:
+      - deployflow
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-deployflow}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-deployflow}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    logging: *default-logging
+    networks:
+      - deployflow
+
+  minio-init:
+    image: minio/mc:latest
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-deployflow}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-deployflow}
+      AWS_BUCKET: ${AWS_BUCKET:-deployflow-logs}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing "local/$${AWS_BUCKET}"
+        mc anonymous set none "local/$${AWS_BUCKET}"
+    logging: *default-logging
+    networks:
+      - deployflow
+
+  registry:
+    image: registry:2
+    restart: unless-stopped
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+    volumes:
+      - registry-data:/var/lib/registry
+    ports:
+      # Dev-only host binding so workers and the CLI can reach the registry.
+      - "127.0.0.1:${REGISTRY_PORT:-5000}:5000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5000/v2/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging: *default-logging
+    networks:
+      - deployflow
+
+  app:
+    <<: *app-service
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+    ports:
+      - "${APP_PORT:-8000}:8000"
+
+  queue:
+    <<: *app-service
+    command: ["php", "artisan", "queue:work", "--tries=3", "--max-time=3600"]
+
+  horizon:
+    <<: *app-service
+    command: ["php", "artisan", "horizon"]
+
+  scheduler:
+    <<: *app-service
+    command: ["php", "artisan", "schedule:work"]
+
+  # One-shot migration runner (`make up` invokes it). Migrations use a
+  # separate DDL role in production; the local stack keeps the same shape.
+  migrate:
+    <<: *app-service
+    profiles: ["tools"]
+    restart: "no"
+    command: ["php", "artisan", "migrate", "--force"]
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  registry-data:
+
+networks:
+  deployflow:
+    name: deployflow
