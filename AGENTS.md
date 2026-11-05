@@ -86,10 +86,10 @@ Ownership rule: `workers/` must not import control-plane internals. They speak H
 
 | Layer | Version | Notes |
 |---|---|---|
-| PHP | 8.4 (8.3–8.5 supported) | Docker image pins 8.4 |
-| Laravel | `^13.0` | Released 2026-03-17 |
-| Inertia | `inertiajs/inertia-laravel ^2` | Server-driven pages |
-| Frontend | React 19 + TypeScript 5 + Vite | `@inertiajs/react ^2` |
+| PHP | 8.4 (8.3–8.5 supported) | Docker image pins 8.4; local WSL is 8.3.6 |
+| Laravel | `^13.0` (13.40) | Released 2026-03-17 |
+| Inertia | `inertiajs/inertia-laravel ^3.7` | Server-driven pages |
+| Frontend | React 19.3 + TypeScript 5.9 + Vite 8 | `@inertiajs/react ^3.11` |
 | Styling | Tailwind CSS 4 | utility-first, no component framework |
 | DB | PostgreSQL 17 | `timestamptz`, UUIDv7 |
 | Cache/Queue | Redis 7 | queues, locks, rate limits, nonce cache |
@@ -111,16 +111,19 @@ These are the contract. They are created during M0 (DF-001…DF-004); if a comma
 it, not to invent a new one.
 
 ```bash
-make setup          # composer install, npm ci, .env, key:generate, migrate, storage link
-make dev            # compose up -d postgres redis minio registry + vite + queue + horizon
+make setup          # composer install, npm ci, .env, key:generate, build assets, migrate
+make dev            # app server + queue listener + vite (composer dev)
 make test           # pest
-make lint           # pint --test + eslint + tsc --noEmit
-make analyse        # phpstan (level 8) + tsc --noEmit
+make lint           # pint --test + tsc --noEmit
+make analyse        # phpstan (level 8)
+make typecheck      # tsc --noEmit
 make check          # lint + analyse + test  (the gate CI runs)
 make fresh          # migrate:fresh --seed (local only)
 make worker-build   # run build worker against local control plane
 make deploy-agent   # run deployment agent against local docker
 ```
+
+`make worker-build` and `make deploy-agent` arrive with the workers (M4/M5).
 
 Never commit `.env`, credentials, dumps, or generated build output.
 
@@ -200,8 +203,12 @@ From blueprint §14, plus local additions:
 
 ## 11. Current state
 
-- M0 not started. The repository contains `blueprint.md`, `README.md`, `AGENTS.md`, `.gitignore`, and the complete
-  `docs/` implementation contract (PRD, architecture, data model, state machines, API, worker contracts, security,
-  testing, roadmap, tasks, operations, ADRs 001–022, milestone briefs).
+- M0 in progress. Done: Laravel 13.40 skeleton, Inertia 3 + React 19 + TypeScript 5.9 + Vite 8 + Tailwind 4 frontend
+  base, Pest 4 / Larastan 3 / Pint configured, `/up` health route, `.env.example`, `Makefile`, and the complete `docs/`
+  contract (ADRs 001–022, milestone briefs). Remaining for M0: compose stack (DF-002), CI workflows (DF-004),
+  `/healthz`, and the worker Make targets.
+- Local toolchain caveat: this WSL install is PHP 8.3.6 without `pdo_pgsql`, `pdo_sqlite`, or `redis`, and Docker WSL
+  integration is disabled — DB migrations/tests and `docker compose` cannot run until both are fixed. The app itself
+  boots and `make check` passes with the array/sync drivers used by `phpunit.xml`.
 - Do not scaffold ad-hoc; follow `docs/TASKS.md` and `docs/agents/M0.md`.
 - When M0 is complete, update this section and the command table in the same PR.

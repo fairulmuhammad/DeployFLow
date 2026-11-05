@@ -3,13 +3,15 @@
 /node_modules
 /public/build
 /public/hot
+/public/fonts-manifest.dev.json
 /public/storage
 /storage/*.key
 /storage/pail
 /bootstrap/cache/*.php
 .phpunit.result.cache
 .phpunit.cache
-/coverage
+/auth.json
+_ide_helper.php
 
 # Environment
 .env
@@ -17,7 +19,6 @@
 !.env.example
 *.pem
 *.key
-!resources/**/*.key
 
 # IDE / OS
 .idea
@@ -26,14 +27,26 @@
 .DS_Store
 Thumbs.db
 *.swp
+.nova
+.zed
+.phpactor.json
+
+# Tooling
+/.codex
+/.cursor/
+/.claude/
+/.idea
 
 # Logs / local state
 *.log
 /tmp
 /.docker-data
 /infrastructure/compose/.env
+Homestead.json
+Homestead.yaml
 
 # Build artifacts
 *.tar
 *.tar.gz
 *.zip
+/coverage
