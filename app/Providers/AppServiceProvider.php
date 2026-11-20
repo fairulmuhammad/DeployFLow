@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Organizations\Models\Organization;
+use App\Domain\Organizations\Models\OrganizationInvitation;
+use App\Domain\Organizations\Policies\OrganizationPolicy;
+use App\Http\RouteBinding\OrganizationRouteBinding;
+use App\Infrastructure\Audit\AuditRecorder;
 use App\Infrastructure\Health\DatabaseProbe;
 use App\Infrastructure\Health\HealthChecker;
 use App\Infrastructure\Health\Probe;
 use App\Infrastructure\Health\RedisProbe;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Auth\Access\Gate as GateContract;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -34,6 +40,8 @@ class AppServiceProvider extends ServiceProvider
 
             return new HealthChecker($probes);
         });
+
+        $this->app->singleton(AuditRecorder::class);
     }
 
     /**
@@ -43,6 +51,22 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configurePasswords();
         $this->configureRateLimiting();
+        $this->registerPolicies();
+        $this->bindRouteParameters();
+    }
+
+    private function registerPolicies(): void
+    {
+        /** @var GateContract $gate */
+        $gate = $this->app->make(GateContract::class);
+
+        $gate->policy(Organization::class, OrganizationPolicy::class);
+        $gate->policy(OrganizationInvitation::class, OrganizationPolicy::class);
+    }
+
+    private function bindRouteParameters(): void
+    {
+        (new OrganizationRouteBinding)->register();
     }
 
     /**
