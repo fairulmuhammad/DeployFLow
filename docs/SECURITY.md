@@ -69,7 +69,8 @@ Authorization matrix is defined in `docs/PRD.md` §3. Deny by default; a policy 
 
 - Laravel session auth; session driver Redis; cookies `Secure`, `HttpOnly`, `SameSite=Lax`.
 - Email verification required for all dashboard routes except verification screens (`verified` middleware).
-- Passwords: Laravel defaults (min 8, uncompromised check via `Password::defaults()`), Argon2id if available.
+- Passwords: minimum 12 characters; uncompromised check via `Password::defaults()` in production (network-bound, so
+  local/test runs skip the breach lookup); Argon2id if available.
 - Login throttled 5/min per email+IP; registration 6/min/IP; reset 3/min/email.
 - Password reset tokens single-use, hashed at rest, 60-minute expiry.
 - Logout invalidates the session and regenerates the CSRF token.

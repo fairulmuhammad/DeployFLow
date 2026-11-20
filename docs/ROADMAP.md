@@ -3,12 +3,12 @@
 Execution order and exit criteria. Task-level detail lives in `docs/TASKS.md`.
 Estimates assume one developer with full context; the blueprint's original part-time estimate was 13–16 weeks.
 
-Status: M0 is implemented and green locally; later milestones are **not started**. Update this table as work lands.
+Status: M0 is implemented and green locally; M1 is in progress (DF-005 complete). Update this table as work lands.
 
 | M | Milestone | Est. | Status | Outcome |
 |---|---|---:|---|---|
-| M0 | Foundation | 1 w | In progress (CI on first PR) | Clean boot + green CI |
-| M1 | Identity & tenancy | 1–2 w | Not started | Isolated organizations with tested roles |
+| M0 | Foundation | 1 w | Complete locally (CI pending first PR) | Clean boot + green CI |
+| M1 | Identity & tenancy | 1–2 w | In progress (DF-005 done) | Isolated organizations with tested roles |
 | M2 | GitHub integration | 1–2 w | Not started | Repository connected; webhooks safe |
 | M3 | Applications | 1 w | Not started | Configurable apps without deploys |
 | M4 | Build pipeline | 2–3 w | Not started | Isolated build → verified digest |

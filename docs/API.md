@@ -33,14 +33,17 @@ returned and logged.
 | Method | Path | Name | Notes |
 |---|---|---|---|
 | GET/POST | `/register` | `register` | Throttle 6/min/IP |
-| GET/POST | `/login` | `login` | Throttle 5/min/email+IP |
+| GET/POST | `/login` | `login` | POST throttled 5/min/email+IP |
 | POST | `/logout` | `logout` | Session invalidate |
-| GET/POST | `/forgot-password` | `password.email` | Always returns generic success |
-| GET/POST | `/reset-password/{token}` | `password.store` | Token single-use |
+| GET | `/forgot-password` | `password.request` | |
+| POST | `/forgot-password` | `password.email` | Always returns generic success; 3/min/email+IP |
+| GET | `/reset-password/{token}` | `password.reset` | Token single-use, 60-minute expiry |
+| POST | `/reset-password` | `password.store` | Token in body; 3/min/email+IP |
 | GET | `/verify-email` | `verification.notice` | |
 | GET | `/verify-email/{id}/{hash}` | `verification.verify` | Signed URL |
 | POST | `/email/verification-notification` | `verification.send` | Throttle 1/min |
 | GET | `/settings/profile` | `profile.edit` | Name, email, password |
+| PATCH | `/settings/profile` | `profile.update` | Changing email re-triggers verification |
 | GET | `/up` | `health` | Liveness only, no auth, no data |
 
 ---
