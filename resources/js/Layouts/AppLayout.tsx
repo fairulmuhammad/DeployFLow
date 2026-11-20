@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import Alert from '../Components/Alert';
-import type { SharedProps } from '../types';
+import type { OrganizationSummary, SharedProps } from '../types';
 
 interface AppLayoutProps {
     title: string;
@@ -10,7 +10,7 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ title, description, children }: AppLayoutProps) {
-    const { auth, status } = usePage<SharedProps>().props;
+    const { auth, status, organizations } = usePage<SharedProps>().props;
 
     return (
         <div className="min-h-full">
@@ -21,13 +21,15 @@ export default function AppLayout({ title, description, children }: AppLayoutPro
                             DeployFlow
                         </Link>
 
+                        <OrganizationSwitcher organizations={organizations} />
+
                         {auth.user && (
                             <nav aria-label="Main">
                                 <Link
-                                    href="/settings/profile"
+                                    href="/organizations"
                                     className="text-sm text-slate-600 hover:text-slate-900"
                                 >
-                                    Profile
+                                    Organizations
                                 </Link>
                             </nav>
                         )}
@@ -35,7 +37,12 @@ export default function AppLayout({ title, description, children }: AppLayoutPro
 
                     {auth.user && (
                         <div className="flex items-center gap-4">
-                            <span className="hidden text-sm text-slate-500 sm:inline">{auth.user.email}</span>
+                            <Link
+                                href="/settings/profile"
+                                className="hidden text-sm text-slate-600 hover:text-slate-900 sm:inline"
+                            >
+                                Profile
+                            </Link>
 
                             <Link
                                 href="/logout"
@@ -66,5 +73,34 @@ export default function AppLayout({ title, description, children }: AppLayoutPro
                 {children}
             </main>
         </div>
+    );
+}
+
+function OrganizationSwitcher({ organizations }: { organizations: OrganizationSummary[] }) {
+    if (organizations.length === 0) {
+        return null;
+    }
+
+    return (
+        <select
+            aria-label="Active organization"
+            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900"
+            defaultValue=""
+            onChange={(event) => {
+                if (event.target.value !== '') {
+                    window.location.href = `/organizations/${event.target.value}`;
+                }
+            }}
+        >
+            <option value="" disabled>
+                Organization
+            </option>
+
+            {organizations.map((organization) => (
+                <option key={organization.id} value={organization.slug}>
+                    {organization.name}
+                </option>
+            ))}
+        </select>
     );
 }
