@@ -210,16 +210,20 @@ From blueprint §14, plus local additions:
 
 ## 11. Current state
 
-- M0 nearly complete. Done: Laravel 13.40 skeleton, Inertia 3 + React 19 + TypeScript 5.9 + Vite 8 + Tailwind 4,
+- M0 complete locally. Done: Laravel 13.40 skeleton, Inertia 3 + React 19 + TypeScript 5.9 + Vite 8 + Tailwind 4,
   Pest 4 / Larastan 3 / Pint, Horizon 5, `/up` and `/healthz` (database + Redis, no secrets), `config/deployflow.php`,
-  `.env.example`, the M0 `Makefile`, the compose stack (postgres/redis/minio/registry/traefik + app/queue/horizon/
+  `.env.example`, the M0 `Makefile`, the compose stack (postgres/redis/s3mock/registry/traefik + app/queue/horizon/
   scheduler/migrate), and `.github/workflows/ci.yml` + `security.yml`. Remaining: confirm CI green on the first pushed
   PR and pin actions by SHA before public release (DF-033).
-- Verification: `make check` green; `docker compose config` valid; `/healthz` returns 503 with
+- M1 in progress. DF-005 authentication is implemented on `feat/DF-005-authentication`: session login/logout,
+  email verification, password reset, profile updates, the `API.md` §6 throttles, UUIDv7 `users`, and
+  `tests/Feature/Auth/*`. Next: DF-006 organizations, DF-007 RBAC, DF-008 tenant isolation.
+- Verification: `pint --test`, `phpstan` level 8, `tsc --noEmit`, `npm run build`, and Pest (35 passed, 154
+  assertions) are green; `docker compose config` is valid. `/healthz` returns 503 with
   `{"status":"degraded","checks":{"database":false,"redis":false}}` on this WSL host because `pdo_pgsql`/`redis` are
   absent, and 200 inside the compose stack.
 - Local toolchain caveat: this WSL install is PHP 8.3.6 without `pdo_pgsql`, `pdo_sqlite`, or `redis`, and Docker WSL
   integration is disabled — host-run DB work needs the extensions, and `docker compose up` needs Docker Desktop with
-  WSL integration enabled. The Windows Docker CLI can still validate the compose file.
-- Do not scaffold ad-hoc; follow `docs/TASKS.md` and `docs/agents/M0.md`.
-- When M1 starts, move this section forward and keep the command table accurate.
+  WSL integration enabled. Tests run inside `deployflow/control-plane:dev` on the `deployflow` network.
+- Do not scaffold ad-hoc; follow `docs/TASKS.md` and `docs/agents/M1.md`.
+- When a milestone starts or lands, move this section forward and keep the command table accurate.
