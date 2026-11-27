@@ -4,8 +4,15 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Audit\Models\AuditLog;
+use App\Domain\Audit\Policies\AuditLogPolicy;
+use App\Domain\Identity\Models\User;
+use App\Domain\Identity\Policies\UserPolicy;
 use App\Domain\Organizations\Models\Organization;
 use App\Domain\Organizations\Models\OrganizationInvitation;
+use App\Domain\Organizations\Models\OrganizationMember;
+use App\Domain\Organizations\Policies\OrganizationInvitationPolicy;
+use App\Domain\Organizations\Policies\OrganizationMemberPolicy;
 use App\Domain\Organizations\Policies\OrganizationPolicy;
 use App\Http\RouteBinding\OrganizationRouteBinding;
 use App\Infrastructure\Audit\AuditRecorder;
@@ -61,7 +68,10 @@ class AppServiceProvider extends ServiceProvider
         $gate = $this->app->make(GateContract::class);
 
         $gate->policy(Organization::class, OrganizationPolicy::class);
-        $gate->policy(OrganizationInvitation::class, OrganizationPolicy::class);
+        $gate->policy(OrganizationInvitation::class, OrganizationInvitationPolicy::class);
+        $gate->policy(OrganizationMember::class, OrganizationMemberPolicy::class);
+        $gate->policy(User::class, UserPolicy::class);
+        $gate->policy(AuditLog::class, AuditLogPolicy::class);
     }
 
     private function bindRouteParameters(): void
