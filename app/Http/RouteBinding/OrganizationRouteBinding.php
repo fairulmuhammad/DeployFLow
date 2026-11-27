@@ -10,9 +10,11 @@ use Illuminate\Support\Facades\Route;
 /**
  * Resolves the `{organization:slug}` route parameter to an Organization model.
  *
- * Membership is enforced by `OrganizationPolicy::view`; a foreign slug or a
- * non-member both produce 403/404. The global scope (DF-008) will tighten this
- * further with a tenant-bound query.
+ * `Organization` is the tenant root, so it is deliberately not constrained by
+ * the tenant global scope: the slug is what establishes the tenant. Membership
+ * is enforced by `OrganizationPolicy::view` and `EnsureRole`; tenant-owned
+ * children are resolved by {@see TenantRouteBinding} inside the active
+ * organization.
  */
 final class OrganizationRouteBinding
 {

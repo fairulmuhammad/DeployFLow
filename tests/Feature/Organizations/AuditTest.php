@@ -13,7 +13,11 @@ uses(RefreshDatabase::class);
 
 function orgForAudit(User $owner, string $slug = 'acme'): Organization
 {
-    return Organization::factory()->ownedBy($owner)->slug($slug)->create();
+    $organization = Organization::factory()->ownedBy($owner)->slug($slug)->create();
+
+    useTenant($organization);
+
+    return $organization;
 }
 
 it('creates an audit row on organization creation', function (): void {

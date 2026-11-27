@@ -13,6 +13,7 @@ use App\Domain\Organizations\Enums\MemberRole;
 use App\Domain\Organizations\Models\Organization;
 use App\Domain\Organizations\Models\OrganizationInvitation;
 use App\Domain\Organizations\Models\OrganizationMember;
+use App\Domain\Tenancy\TenantContext;
 use App\Infrastructure\Audit\AuditRecorder;
 use App\Infrastructure\Organizations\InvitationToken;
 use Illuminate\Http\Request;
@@ -33,6 +34,7 @@ final class OrganizationActions
 {
     public function __construct(
         private readonly AuditRecorder $audits,
+        private readonly TenantContext $tenant,
     ) {}
 
     public function create(User $actor, CreateOrganizationData $data, ?Request $request = null): Organization
@@ -46,6 +48,8 @@ final class OrganizationActions
                 'owner_id' => $actor->getKey(),
                 'settings' => [],
             ]);
+
+            $this->tenant->for($organization->getKey());
 
             $organization->members()->create([
                 'user_id' => $actor->getKey(),
@@ -83,6 +87,8 @@ final class OrganizationActions
 
     public function update(Organization $organization, UpdateOrganizationData $data, ?User $actor = null, ?Request $request = null): Organization
     {
+        $this->tenant->for($organization->getKey());
+
         $organization->update(['name' => $data->name]);
 
         if ($actor !== null) {
@@ -102,6 +108,8 @@ final class OrganizationActions
 
     public function destroy(Organization $organization, ?User $actor = null, ?Request $request = null): void
     {
+        $this->tenant->for($organization->getKey());
+
         $organization->delete();
 
         if ($actor !== null) {
@@ -122,6 +130,8 @@ final class OrganizationActions
      */
     public function transferOwnership(Organization $organization, TransferOwnershipData $data, User $actor, ?Request $request = null): Organization
     {
+        $this->tenant->for($organization->getKey());
+
         $newOwner = $data->newOwner;
 
         return DB::transaction(function () use ($organization, $newOwner, $actor, $request): Organization {
@@ -170,6 +180,8 @@ final class OrganizationActions
         User $actor,
         ?Request $request = null,
     ): OrganizationInvitation {
+        $this->tenant->for($organization->getKey());
+
         $rawToken = InvitationToken::random();
 
         $invitation = new OrganizationInvitation([
@@ -204,6 +216,8 @@ final class OrganizationActions
         if ($organization === null) {
             throw new RuntimeException('Invitation has no organization.');
         }
+
+        $this->tenant->for($organization->getKey());
 
         $invitation->delete();
 
@@ -241,6 +255,8 @@ final class OrganizationActions
             if ($invitation->isExpired()) {
                 throw new RuntimeException('Invitation expired.');
             }
+
+            $this->tenant->for($organization->getKey());
 
             if ($rawToken !== null && ! $invitation->matchesToken($rawToken)) {
                 throw new RuntimeException('Invitation token does not match.');
@@ -285,6 +301,8 @@ final class OrganizationActions
         User $actor,
         ?Request $request = null,
     ): OrganizationMember {
+        $this->tenant->for($organization->getKey());
+
         if ($member->role === MemberRole::Owner) {
             throw new RuntimeException(
                 'The owner role cannot be changed directly. Use owner transfer instead.'
@@ -320,6 +338,8 @@ final class OrganizationActions
         User $actor,
         ?Request $request = null,
     ): void {
+        $this->tenant->for($organization->getKey());
+
         if ($member->role === MemberRole::Owner) {
             throw new RuntimeException(
                 'The last owner cannot be removed. Transfer ownership first.'

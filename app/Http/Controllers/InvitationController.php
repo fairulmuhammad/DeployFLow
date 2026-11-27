@@ -9,7 +9,7 @@ use App\Domain\Organizations\Actions\OrganizationActions;
 use App\Domain\Organizations\Enums\MemberRole;
 use App\Domain\Organizations\Models\Organization;
 use App\Domain\Organizations\Models\OrganizationInvitation;
-use App\Infrastructure\Organizations\InvitationToken;
+use App\Domain\Tenancy\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,6 +20,7 @@ final class InvitationController extends Controller
 {
     public function __construct(
         private readonly OrganizationActions $actions,
+        private readonly TenantContext $tenant,
     ) {}
 
     /**
@@ -30,9 +31,7 @@ final class InvitationController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $invitation = OrganizationInvitation::query()
-            ->where('token_hash', InvitationToken::hash($token))
-            ->first();
+        $invitation = OrganizationInvitation::findByRawToken($token);
 
         if ($invitation === null) {
             return Inertia::render('Organizations/Invitation', [
@@ -49,6 +48,9 @@ final class InvitationController extends Controller
                 'organizationSlug' => null,
             ]);
         }
+
+        // The token selected the tenant; keep it for the rest of the request.
+        $this->tenant->for($organization->getKey());
 
         if ($invitation->accepted_at !== null) {
             return Inertia::render('Organizations/Invitation', [
@@ -107,10 +109,8 @@ final class InvitationController extends Controller
     /**
      * `DELETE /organizations/{organization:slug}/invitations/{invitation}`
      */
-    public function destroy(Request $request, Organization $organization, string $invitationId): RedirectResponse
+    public function destroy(Request $request, Organization $organization, OrganizationInvitation $invitation): RedirectResponse
     {
-        $invitation = $organization->invitations()->findOrFail($invitationId);
-
         $this->authorize('revokeInvitation', $invitation);
 
         /** @var User $user */

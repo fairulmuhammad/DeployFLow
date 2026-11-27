@@ -215,11 +215,10 @@ From blueprint §14, plus local additions:
   `.env.example`, the M0 `Makefile`, the compose stack (postgres/redis/s3mock/registry/traefik + app/queue/horizon/
   scheduler/migrate), and `.github/workflows/ci.yml` + `security.yml`. Remaining: confirm CI green on the first pushed
   PR and pin actions by SHA before public release (DF-033).
-- M1 in progress. DF-005 authentication is implemented on `feat/DF-005-authentication`: session login/logout,
-  email verification, password reset, profile updates, the `API.md` §6 throttles, UUIDv7 `users`, and
-  `tests/Feature/Auth/*`. DF-006 organizations + DF-007 RBAC complete (policies, `RolePermission` truth table,
-  `ResolveOrganization` + `EnsureRole`, `AuthorizationMatrixTest`). Next: DF-008 tenant isolation.
-- Verification: `pint --test`, `phpstan` level 8, `tsc --noEmit`, `npm run build`, and Pest (68 passed, 318
+- M1 complete. DF-005 authentication, DF-006 organizations, DF-007 RBAC, and DF-008 tenant isolation are done.
+  DF-008 adds `TenantContext` (scoped binding), the `BelongsToOrganization` global scope, scoped route bindings,
+  tenant-safe organization listing, and `tests/Security/TenantIsolationTest` (SEC-01…03, SEC-19). Next: M2 / DF-009.
+- Verification: `pint --test`, `phpstan` level 8, `tsc --noEmit`, `npm run build`, and Pest (76 passed, 335
   assertions) are green; `docker compose config` is valid. `/healthz` returns 503 with
   `{"status":"degraded","checks":{"database":false,"redis":false}}` on this WSL host because `pdo_pgsql`/`redis` are
   absent, and 200 inside the compose stack.

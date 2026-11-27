@@ -59,10 +59,8 @@ final class MemberController extends Controller
         ]);
     }
 
-    public function update(Request $request, Organization $organization, string $memberId): RedirectResponse
+    public function update(Request $request, Organization $organization, OrganizationMember $member): RedirectResponse
     {
-        $member = $organization->members()->findOrFail($memberId);
-
         $this->authorize('manageMembers', $organization);
 
         if (! $member->role->isManageable()) {
@@ -87,10 +85,8 @@ final class MemberController extends Controller
         return back()->with('status', 'Member role updated.');
     }
 
-    public function destroy(Request $request, Organization $organization, string $memberId): RedirectResponse
+    public function destroy(Request $request, Organization $organization, OrganizationMember $member): RedirectResponse
     {
-        $member = $organization->members()->findOrFail($memberId);
-
         $this->authorize('manageMembers', $organization);
 
         if (! $member->role->isManageable()) {

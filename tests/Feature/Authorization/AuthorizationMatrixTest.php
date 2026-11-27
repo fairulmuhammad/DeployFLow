@@ -53,6 +53,7 @@ function authorizeAgainst(User $actor, string $ability, Organization $organizati
 it('matches the permission truth table for every role and action', function (): void {
     foreach (MemberRole::cases() as $role) {
         $organization = Organization::factory()->slug('acme-'.$role->value)->create();
+        useTenant($organization);
 
         if ($role === MemberRole::Owner) {
             $actor = User::find($organization->owner_id);
@@ -80,6 +81,7 @@ it('matches the permission truth table for every role and action', function (): 
 
 it('denies every role-gated action to non-members', function (): void {
     $organization = Organization::factory()->slug('acme-nonmember')->create();
+    useTenant($organization);
     $outsider = User::factory()->create();
 
     $invitation = OrganizationInvitation::factory()
@@ -94,6 +96,7 @@ it('denies every role-gated action to non-members', function (): void {
 
 it('denies every action to unauthenticated callers', function (): void {
     $organization = Organization::factory()->slug('acme-anon')->create();
+    useTenant($organization);
 
     $invitation = OrganizationInvitation::factory()
         ->for($organization)
@@ -109,6 +112,7 @@ it('denies every action to unauthenticated callers', function (): void {
 
 it('allows invitation acceptance only for the matching email', function (): void {
     $organization = Organization::factory()->slug('acme-accept')->create();
+    useTenant($organization);
 
     $invitee = User::factory()->create(['email' => 'invitee@example.com']);
     $invitation = OrganizationInvitation::factory()

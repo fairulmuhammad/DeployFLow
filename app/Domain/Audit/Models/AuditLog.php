@@ -8,6 +8,7 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Enums\AuditActorType;
 use App\Domain\Identity\Models\User;
 use App\Domain\Organizations\Models\Organization;
+use App\Domain\Tenancy\BelongsToOrganization;
 use Database\Factories\AuditLogFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -37,6 +38,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class AuditLog extends Model
 {
+    use BelongsToOrganization;
+
     /** @use HasFactory<AuditLogFactory> */
     use HasFactory, HasUuids;
 

@@ -6,6 +6,7 @@ namespace App\Domain\Organizations\Models;
 
 use App\Domain\Identity\Models\User;
 use App\Domain\Organizations\Enums\MemberRole;
+use App\Domain\Tenancy\BelongsToOrganization;
 use Database\Factories\OrganizationMemberFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['organization_id', 'user_id', 'role'])]
 class OrganizationMember extends Model
 {
+    use BelongsToOrganization;
+
     /** @use HasFactory<OrganizationMemberFactory> */
     use HasFactory, HasUuids;
 

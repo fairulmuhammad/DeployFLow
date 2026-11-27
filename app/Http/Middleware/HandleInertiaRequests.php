@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use App\Domain\Identity\Models\User;
 use App\Domain\Organizations\Models\Organization;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -61,24 +62,21 @@ class HandleInertiaRequests extends Middleware
      */
     private function organizationList(User $user): array
     {
-        $rows = Organization::query()
-            ->whereHas(
-                'members',
-                fn ($query) => $query->where('user_id', $user->getKey()),
-            )
-            ->select(['id', 'name', 'slug', 'created_at'])
-            ->orderBy('name')
-            ->get();
+        return $user->organizations()
+            ->orderBy('organizations.name')
+            ->get()
+            ->map(function (Organization $organization): array {
+                $pivot = $organization->getRelation('pivot');
 
-        return $rows->map(function (Organization $organization) use ($user) {
-            $role = $organization->roleForUser($user)?->value;
-
-            return [
-                'id' => $organization->getKey(),
-                'name' => $organization->name,
-                'slug' => $organization->slug,
-                'role' => $role,
-            ];
-        })->all();
+                return [
+                    'id' => $organization->getKey(),
+                    'name' => $organization->name,
+                    'slug' => $organization->slug,
+                    'role' => $pivot instanceof Pivot
+                        ? (string) $pivot->getAttribute('role')
+                        : null,
+                ];
+            })
+            ->all();
     }
 }

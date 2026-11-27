@@ -15,6 +15,8 @@ function ownedOrg(User $owner, string $slug = 'acme'): Organization
     $organization = Organization::factory()->ownedBy($owner)->slug($slug)->create();
     $organization->refresh();
 
+    useTenant($organization);
+
     return $organization;
 }
 
