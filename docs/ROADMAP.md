@@ -8,7 +8,7 @@ Status: M0 is implemented and green locally; M1 is in progress (DF-005 complete)
 | M | Milestone | Est. | Status | Outcome |
 |---|---|---:|---|---|
 | M0 | Foundation | 1 w | Complete locally (CI pending first PR) | Clean boot + green CI |
-| M1 | Identity & tenancy | 1–2 w | In progress (DF-005 done) | Isolated organizations with tested roles |
+| M1 | Identity & tenancy | 1–2 w | In progress (DF-005, DF-006 complete; DF-007 complete) | Isolated organizations with tested roles |
 | M2 | GitHub integration | 1–2 w | Not started | Repository connected; webhooks safe |
 | M3 | Applications | 1 w | Not started | Configurable apps without deploys |
 | M4 | Build pipeline | 2–3 w | Not started | Isolated build → verified digest |

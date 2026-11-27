@@ -217,8 +217,9 @@ From blueprint §14, plus local additions:
   PR and pin actions by SHA before public release (DF-033).
 - M1 in progress. DF-005 authentication is implemented on `feat/DF-005-authentication`: session login/logout,
   email verification, password reset, profile updates, the `API.md` §6 throttles, UUIDv7 `users`, and
-  `tests/Feature/Auth/*`. Next: DF-006 organizations, DF-007 RBAC, DF-008 tenant isolation.
-- Verification: `pint --test`, `phpstan` level 8, `tsc --noEmit`, `npm run build`, and Pest (35 passed, 154
+  `tests/Feature/Auth/*`. DF-006 organizations + DF-007 RBAC complete (policies, `RolePermission` truth table,
+  `ResolveOrganization` + `EnsureRole`, `AuthorizationMatrixTest`). Next: DF-008 tenant isolation.
+- Verification: `pint --test`, `phpstan` level 8, `tsc --noEmit`, `npm run build`, and Pest (68 passed, 318
   assertions) are green; `docker compose config` is valid. `/healthz` returns 503 with
   `{"status":"degraded","checks":{"database":false,"redis":false}}` on this WSL host because `pdo_pgsql`/`redis` are
   absent, and 200 inside the compose stack.

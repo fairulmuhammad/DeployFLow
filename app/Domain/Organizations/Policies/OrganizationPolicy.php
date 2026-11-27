@@ -6,14 +6,15 @@ namespace App\Domain\Organizations\Policies;
 
 use App\Domain\Identity\Models\User;
 use App\Domain\Organizations\Enums\MemberRole;
+use App\Domain\Organizations\Enums\RolePermission;
 use App\Domain\Organizations\Models\Organization;
-use App\Domain\Organizations\Models\OrganizationInvitation;
 
 /**
  * Authorization for organizations, members, and invitations.
  *
  * Every method is deny-by-default; an unimplemented method means `false`.
- * The truth table comes from docs/PRD.md §3 and docs/API.md §3.
+ * The truth table comes from docs/PRD.md §3 and is centralized in
+ * {@see RolePermission::grantedTo()}.
  */
 final class OrganizationPolicy
 {
@@ -28,55 +29,63 @@ final class OrganizationPolicy
 
     public function view(?User $user, Organization $organization): bool
     {
-        return $organization->isMember($user);
+        return $this->check($user, $organization, RolePermission::ViewOrganization);
     }
 
     public function update(?User $user, Organization $organization): bool
     {
-        return $organization->roleFor($user, MemberRole::Owner, MemberRole::Admin);
+        return $this->check($user, $organization, RolePermission::UpdateOrganization);
     }
 
     public function destroy(?User $user, Organization $organization): bool
     {
-        return $this->isOwner($user, $organization);
+        return $this->check($user, $organization, RolePermission::ArchiveOrganization);
     }
 
     public function invite(?User $user, Organization $organization): bool
     {
-        return $organization->roleFor($user, MemberRole::Owner, MemberRole::Admin);
+        return $this->check($user, $organization, RolePermission::InviteMembers);
     }
 
-    public function revokeInvitation(?User $user, OrganizationInvitation $invitation): bool
+    public function manageMembers(?User $user, Organization $organization): bool
     {
-        $organization = $invitation->organization;
-
-        return $organization !== null && $this->invite($user, $organization);
+        return $this->check($user, $organization, RolePermission::ManageMembers);
     }
 
-    public function acceptInvitation(?User $user, OrganizationInvitation $invitation): bool
+    public function transferOwnership(?User $user, Organization $organization): bool
+    {
+        return $this->isOwner($user, $organization)
+            && $this->check($user, $organization, RolePermission::TransferOwnership);
+    }
+
+    public function viewAudit(?User $user, Organization $organization): bool
+    {
+        return $this->check($user, $organization, RolePermission::ViewAudit);
+    }
+
+    /**
+     * @internal
+     */
+    public function check(?User $user, Organization $organization, RolePermission $permission): bool
     {
         if ($user === null) {
             return false;
         }
 
-        if ($invitation->isExpired()) {
-            return false;
-        }
+        $member = $organization->members()
+            ->where('user_id', $user->getKey())
+            ->first();
 
-        return strcasecmp($user->email, $invitation->email) === 0;
+        $role = $member?->role;
+
+        return $role !== null && RolePermission::allows($role, $permission);
     }
 
-    public function manageMembers(?User $user, Organization $organization): bool
-    {
-        return $this->invite($user, $organization);
-    }
-
-    public function transferOwnership(?User $user, Organization $organization): bool
-    {
-        return $this->isOwner($user, $organization);
-    }
-
-    public function isOwner(?User $user, Organization $organization): bool
+    /**
+     * Owner-specific shortcut for `transferOwnership` which requires the
+     * caller to be the *canonical* owner (owner_id + owner role).
+     */
+    private function isOwner(?User $user, Organization $organization): bool
     {
         return $user !== null
             && $organization->owner_id === $user->getKey()
