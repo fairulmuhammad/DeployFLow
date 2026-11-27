@@ -22,6 +22,8 @@ function makeOrganization(User $owner, string $slug = 'acme'): Organization
         ->slug($slug)
         ->create();
 
+    useTenant($organization);
+
     return $organization;
 }
 

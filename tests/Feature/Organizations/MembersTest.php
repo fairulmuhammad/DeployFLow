@@ -11,7 +11,11 @@ uses(RefreshDatabase::class);
 
 function orgForMembers(User $owner): Organization
 {
-    return Organization::factory()->ownedBy($owner)->slug('acme')->create();
+    $organization = Organization::factory()->ownedBy($owner)->slug('acme')->create();
+
+    useTenant($organization);
+
+    return $organization;
 }
 
 it('lets an admin change a non-owner member role', function (): void {

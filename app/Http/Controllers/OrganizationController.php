@@ -10,6 +10,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Organizations\Actions\OrganizationActions;
 use App\Domain\Organizations\Enums\MemberRole;
 use App\Domain\Organizations\Models\Organization;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -29,21 +30,20 @@ final class OrganizationController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $organizations = Organization::with('owner')
-            ->whereHas(
-                'members',
-                fn ($query) => $query->where('user_id', $user->getKey()),
-            )
-            ->orderBy('created_at')
+        $organizations = $user->organizations()
+            ->with('owner')
+            ->orderBy('organizations.created_at')
             ->get()
-            ->map(function (Organization $organization) use ($user) {
-                $role = $organization->roleForUser($user)?->value;
+            ->map(function (Organization $organization): array {
+                $pivot = $organization->getRelation('pivot');
 
                 return [
                     'id' => $organization->getKey(),
                     'name' => $organization->name,
                     'slug' => $organization->slug,
-                    'role' => $role,
+                    'role' => $pivot instanceof Pivot
+                        ? (string) $pivot->getAttribute('role')
+                        : null,
                     'created_at' => $organization->created_at?->toIso8601String(),
                 ];
             })

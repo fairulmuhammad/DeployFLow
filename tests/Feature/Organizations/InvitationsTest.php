@@ -14,7 +14,11 @@ uses(RefreshDatabase::class);
 
 function orgForInvitations(User $owner, string $slug = 'acme'): Organization
 {
-    return Organization::factory()->ownedBy($owner)->slug($slug)->create();
+    $organization = Organization::factory()->ownedBy($owner)->slug($slug)->create();
+
+    useTenant($organization);
+
+    return $organization;
 }
 
 function makeInvitation(Organization $organization, string $email, string $role = 'developer'): OrganizationInvitation

@@ -14,7 +14,9 @@ use App\Domain\Organizations\Models\OrganizationMember;
 use App\Domain\Organizations\Policies\OrganizationInvitationPolicy;
 use App\Domain\Organizations\Policies\OrganizationMemberPolicy;
 use App\Domain\Organizations\Policies\OrganizationPolicy;
+use App\Domain\Tenancy\TenantContext;
 use App\Http\RouteBinding\OrganizationRouteBinding;
+use App\Http\RouteBinding\TenantRouteBinding;
 use App\Infrastructure\Audit\AuditRecorder;
 use App\Infrastructure\Health\DatabaseProbe;
 use App\Infrastructure\Health\HealthChecker;
@@ -49,6 +51,10 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(AuditRecorder::class);
+
+        // Scoped so the active tenant cannot leak between requests (Octane) or
+        // queue jobs. See docs/ARCHITECTURE.md §4.
+        $this->app->scoped(TenantContext::class);
     }
 
     /**
@@ -77,6 +83,7 @@ class AppServiceProvider extends ServiceProvider
     private function bindRouteParameters(): void
     {
         (new OrganizationRouteBinding)->register();
+        (new TenantRouteBinding)->register();
     }
 
     /**
